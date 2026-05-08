@@ -256,3 +256,95 @@ export const deleteCitizen = async (req, res) => {
     });
   }
 };
+
+export const startDeliverySession = async (req, res) => {
+  try {
+    const { event_type } = req.body;
+
+    if (!event_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'event_type es requerido',
+      });
+    }
+
+    await pool.query(
+      `UPDATE citizens 
+       SET current_event_type = $1, delivery_status = 'pending' 
+       WHERE head_of_household_id IS NULL`,
+      [event_type]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Jornada de ${event_type} iniciada exitosamente`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Ocurrió un error al iniciar la jornada',
+    });
+  }
+};
+
+export const markAsDelivered = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(Number(id))) {
+      return res.status(400).json({
+        success: false,
+        message: 'id debe ser un número válido',
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE citizens 
+       SET delivery_status = 'delivered' 
+       WHERE id = $1 
+       RETURNING id, delivery_status`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ciudadano no encontrado',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Entrega registrada exitosamente',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Ocurrió un error al registrar la entrega',
+    });
+  }
+};
+
+export const endDeliverySession = async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE citizens 
+       SET delivery_status = 'none', 
+           current_event_type = 'NONE'`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Jornada finalizada y estados reiniciados',
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Ocurrió un error al finalizar la jornada',
+    });
+  }
+};

@@ -2,6 +2,7 @@ import * as userControllers from "./controllers/userController.js";
 import * as citizenControllers from "./controllers/citizenController.js";
 import * as projectControllers from "./controllers/projectController.js";
 import * as documentControllers from "./controllers/documentController.js";
+import * as financeControllers from "./controllers/financeController.js";
 import upload from "./middlewares/uploadMiddleware.js";
 import { Router } from 'express';
 
@@ -15,6 +16,9 @@ router.get('/members-by-head/:headId', citizenControllers.getMembersByHeadId);
 router.post('/citizens', citizenControllers.createCitizen);
 router.put('/citizens/:id', citizenControllers.updateCitizen);
 router.delete('/citizens/:id', citizenControllers.deleteCitizen);
+router.patch('/citizens/start-session', citizenControllers.startDeliverySession);
+router.patch('/citizens/mark-delivered/:id', citizenControllers.markAsDelivered);
+router.patch('/citizens/end-session', citizenControllers.endDeliverySession);
 // Rutas de Proyectos Comunitarios
 router.get('/projects', projectControllers.getProjects);
 router.post('/projects', projectControllers.createProject);
@@ -25,5 +29,8 @@ router.post('/documents', upload.single('file'), documentControllers.createDocum
 router.get('/documents', documentControllers.getDocuments);
 router.put('/documents/:id', upload.single('file'), documentControllers.updateDocument);
 router.delete('/documents/:id', documentControllers.deleteDocument);
+// Rutas de Finanzas
+router.post('/finances', financeControllers.createTransaction);
+router.get('/finances/stats', financeControllers.getFinanceStatistics);
 
 export default router;
