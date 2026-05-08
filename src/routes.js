@@ -1,6 +1,8 @@
 import * as userControllers from "./controllers/userController.js";
 import * as citizenControllers from "./controllers/citizenController.js";
 import * as projectControllers from "./controllers/projectController.js";
+import * as documentControllers from "./controllers/documentController.js";
+import upload from "./middlewares/uploadMiddleware.js";
 import { Router } from 'express';
 
 const router = Router();
@@ -18,4 +20,10 @@ router.get('/projects', projectControllers.getProjects);
 router.post('/projects', projectControllers.createProject);
 router.put('/projects/:id', projectControllers.updateProject);
 router.delete('/projects/:id', projectControllers.deleteProject);
+// Rutas de Documentos
+router.post('/documents', upload.single('file'), documentControllers.createDocument);
+router.get('/documents', documentControllers.getDocuments);
+router.put('/documents/:id', upload.single('file'), documentControllers.updateDocument);
+router.delete('/documents/:id', documentControllers.deleteDocument);
+
 export default router;
