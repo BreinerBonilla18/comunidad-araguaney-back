@@ -1,9 +1,31 @@
 import pool from '../db.js';
 
+export const getAllCitizens = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, updated_at
+       FROM citizens
+       ORDER BY last_name, first_name`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Ciudadanos obtenidos exitosamente',
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Ocurrió un error al obtener los ciudadanos',
+    });
+  }
+};
+
 export const getFamilyHeads = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, updated_at
+      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, updated_at
        FROM citizens
        WHERE head_of_household_id IS NULL
        ORDER BY last_name, first_name`
@@ -291,6 +313,7 @@ export const startDeliverySession = async (req, res) => {
 export const markAsDelivered = async (req, res) => {
   try {
     const { id } = req.params;
+    const { status } = req.body;
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({
@@ -301,10 +324,10 @@ export const markAsDelivered = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE citizens 
-       SET delivery_status = 'delivered' 
-       WHERE id = $1 
+       SET delivery_status = $1 
+       WHERE id = $2 
        RETURNING id, delivery_status`,
-      [id]
+      [status, id]
     );
 
     if (result.rowCount === 0) {

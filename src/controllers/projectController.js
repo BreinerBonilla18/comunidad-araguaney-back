@@ -3,7 +3,7 @@ import pool from '../db.js';
 export const getProjects = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, description, status, budget, estimated_cost, start_date, created_at
+      `SELECT id, name, description, status, estimated_cost, start_date, created_at
        FROM community_projects
        ORDER BY created_at DESC`
     );
@@ -28,7 +28,6 @@ export const createProject = async (req, res) => {
       name,
       description,
       status,
-      budget,
       estimated_cost,
       start_date,
     } = req.body;
@@ -50,14 +49,13 @@ export const createProject = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO community_projects
-       (name, description, status, budget, estimated_cost, start_date)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, description, status, budget, estimated_cost, start_date, created_at`,
+       (name, description, status, estimated_cost, start_date)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, description, status, estimated_cost, start_date, created_at`,
       [
         name,
         description || null,
         status || 'pending',
-        budget || 0,
         estimated_cost || 0,
         start_date || null
       ]
@@ -84,7 +82,6 @@ export const updateProject = async (req, res) => {
       name,
       description,
       status,
-      budget,
       estimated_cost,
       start_date,
     } = req.body;
@@ -117,12 +114,11 @@ export const updateProject = async (req, res) => {
        SET name = COALESCE($1, name),
            description = COALESCE($2, description),
            status = COALESCE($3, status),
-           budget = COALESCE($4, budget),
-           estimated_cost = COALESCE($5, estimated_cost),
-           start_date = COALESCE($6, start_date)
-       WHERE id = $7
-       RETURNING id, name, description, status, budget, estimated_cost, start_date, created_at`,
-      [name, description, status, budget, estimated_cost, start_date, id]
+           estimated_cost = COALESCE($4, estimated_cost),
+           start_date = COALESCE($5, start_date)
+       WHERE id = $6
+       RETURNING id, name, description, status, estimated_cost, start_date, created_at`,
+      [name, description, status, estimated_cost, start_date, id]
     );
 
     return res.status(200).json({

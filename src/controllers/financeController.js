@@ -37,6 +37,28 @@ export const createTransaction = async (req, res) => {
   }
 };
 
+export const getAllFinances = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, description, transaction_type, amount, transaction_date, created_at
+       FROM finances
+       ORDER BY created_at DESC`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Finanzas obtenidas exitosamente',
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Ocurrió un error al obtener las finanzas',
+    });
+  }
+};
+
 export const getFinanceStatistics = async (req, res) => {
   try {
     const statsQuery = `
