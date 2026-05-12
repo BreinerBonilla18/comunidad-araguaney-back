@@ -4,6 +4,7 @@ import * as projectControllers from "./controllers/projectController.js";
 import * as documentControllers from "./controllers/documentController.js";
 import * as financeControllers from "./controllers/financeController.js";
 import * as dashboardControllers from "./controllers/dashboardController.js";
+import * as spokespersonControllers from "./controllers/spokepersonController.js";
 import upload from "./middlewares/uploadMiddleware.js";
 import { Router } from 'express';
 
@@ -37,5 +38,9 @@ router.delete('/documents/:id', documentControllers.deleteDocument);
 router.post('/finances', financeControllers.createTransaction);
 router.get('/finances', financeControllers.getAllFinances);
 router.get('/finances/stats', financeControllers.getFinanceStatistics);
+// Rutas de Voceros
+router.get('/spokespersons', spokespersonControllers.getSpokespersons);
+router.patch('/spokespersons/assign/:id', spokespersonControllers.assignSpokesperson);
+router.patch('/spokespersons/remove/:id', spokespersonControllers.removeSpokesperson);
 
 export default router;
