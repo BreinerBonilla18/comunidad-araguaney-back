@@ -3,7 +3,7 @@ import pool from '../db.js';
 export const getAllCitizens = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, updated_at
+      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, delivery_quantity, gas_cylinder_number, updated_at
        FROM citizens
        ORDER BY last_name, first_name`
     );
@@ -313,7 +313,7 @@ export const startDeliverySession = async (req, res) => {
 export const markAsDelivered = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, quantity, cylinder_number } = req.body;
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({
@@ -322,12 +322,16 @@ export const markAsDelivered = async (req, res) => {
       });
     }
 
+    const gas_cylinder_number = cylinder_number ? cylinder_number : null;
+
     const result = await pool.query(
       `UPDATE citizens 
-       SET delivery_status = $1 
-       WHERE id = $2 
+       SET delivery_status = $1,
+           delivery_quantity = $2,
+           gas_cylinder_number = $3
+       WHERE id = $4
        RETURNING id, delivery_status`,
-      [status, id]
+      [status, gas_cylinder_number, quantity, id]
     );
 
     if (result.rowCount === 0) {
@@ -356,7 +360,9 @@ export const endDeliverySession = async (req, res) => {
     await pool.query(
       `UPDATE citizens 
        SET delivery_status = 'none', 
-           current_event_type = 'NONE'`
+           current_event_type = 'NONE',
+           delivery_quantity = 0,
+           gas_cylinder_number = NULL`
     );
 
     return res.status(200).json({
