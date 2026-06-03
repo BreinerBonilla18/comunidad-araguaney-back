@@ -3,10 +3,10 @@ import pool from "../db.js";
 export const getSpokespersons = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, is_spokesperson, updated_at, spokesperson_position 
-       FROM citizens
-       WHERE is_spokesperson = TRUE
-       ORDER BY last_name, first_name`,
+      `SELECT s.id, s.citizen_id, s.rank, s.position, s.created_at, 
+              c.id_number, c.first_name, c.last_name
+       FROM spokespersons s
+       JOIN citizens c ON s.citizen_id = c.id`,
     );
 
     return res.status(200).json({
@@ -26,7 +26,7 @@ export const getSpokespersons = async (req, res) => {
 export const assignSpokesperson = async (req, res) => {
   try {
     const { id } = req.params;
-    const { position } = req.body;
+    const { position, rank } = req.body;
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({
@@ -37,7 +37,7 @@ export const assignSpokesperson = async (req, res) => {
 
     // Verificar si el ciudadano existe
     const citizenCheck = await pool.query(
-      "SELECT id, is_spokesperson FROM citizens WHERE id = $1",
+      "SELECT id FROM citizens WHERE id = $1",
       [id],
     );
 
@@ -48,32 +48,23 @@ export const assignSpokesperson = async (req, res) => {
       });
     }
 
-    if (citizenCheck.rows[0].is_spokesperson) {
-      return res.status(400).json({
-        success: false,
-        message: "El ciudadano ya es un vocero",
-      });
-    }
-
     const result = await pool.query(
-      `UPDATE citizens
-       SET is_spokesperson = TRUE, spokesperson_position = $1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-       RETURNING id, id_number, first_name, last_name, is_spokesperson, spokesperson_position`,
-      [position, id],
+      `INSERT INTO spokespersons (citizen_id, rank, position)
+       VALUES ($1, $2, $3)
+       RETURNING id, citizen_id, rank, position, created_at`,
+      [id, rank, position],
     );
 
     return res.status(200).json({
       success: true,
-      message: "Cargo de vocero asignado exitosamente",
+      message: "Vocero creado exitosamente",
       data: result.rows[0],
     });
   } catch (error) {
     console.error("Error in assignSpokesperson:", error);
     return res.status(500).json({
       success: false,
-      message: "Ocurrió un error al asignar el cargo de vocero",
+      message: "Ocurrió un error al crear vocero",
     });
   }
 };
@@ -94,7 +85,7 @@ export const removeSpokesperson = async (req, res) => {
 
     // Verificar si el ciudadano existe y si es vocero
     const citizenCheck = await pool.query(
-      "SELECT id, is_spokesperson FROM citizens WHERE id = $1",
+      "SELECT id FROM citizens WHERE id = $1",
       [id],
     );
 
@@ -105,33 +96,23 @@ export const removeSpokesperson = async (req, res) => {
       });
     }
 
-    if (!citizenCheck.rows[0].is_spokesperson) {
-      return res.status(400).json({
-        success: false,
-        message: "El ciudadano no tiene el cargo de vocero",
-      });
-    }
-
     const result = await pool.query(
-      `UPDATE citizens
-       SET is_spokesperson = FALSE,
-           spokesperson_position = NULL,
-           updated_at = CURRENT_TIMESTAMP
+      `DELETE FROM spokespersons
        WHERE id = $1
-       RETURNING id, id_number, first_name, last_name, is_spokesperson`,
+       RETURNING id, citizen_id, rank, position, created_at`,
       [id],
     );
 
     return res.status(200).json({
       success: true,
-      message: "Cargo de vocero removido exitosamente",
+      message: "Vocero removido exitosamente",
       data: result.rows[0],
     });
   } catch (error) {
     console.error("Error in removeSpokesperson:", error);
     return res.status(500).json({
       success: false,
-      message: "Ocurrió un error al remover el cargo de vocero",
+      message: "Ocurrió un error al remover el vocero",
     });
   }
 };
