@@ -17,6 +17,7 @@ router.get('/dashboard/stats', dashboardControllers.getDashboardStats);
 // Rutas de Registro de Familias
 router.get('/family-heads', citizenControllers.getFamilyHeads);
 router.get('/members-by-head/:headId', citizenControllers.getMembersByHeadId);
+router.get('/citizens/stadistics', citizenControllers.getStatistics);
 router.get('/citizens', citizenControllers.getAllCitizens);
 router.post('/citizens', citizenControllers.createCitizen);
 router.put('/citizens/:id', citizenControllers.updateCitizen);

@@ -3,7 +3,7 @@ import pool from "../db.js";
 export const getAllCitizens = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, updated_at
+      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, delivery_status, is_lactating, is_pregnant, is_disabled, updated_at
        FROM citizens
        ORDER BY last_name, first_name`,
     );
@@ -37,6 +37,9 @@ export const getFamilyHeads = async (req, res) => {
         cit.delivery_status, 
         cit.current_event_type,
         cit.updated_at,
+        cit.is_lactating, 
+        cit.is_pregnant, 
+        cit.is_disabled,
         COALESCE(
           json_agg(
             json_build_object('cylinder_code', gas.cylinder_code, 'weight_kg', gas.weight_kg)
@@ -86,7 +89,7 @@ export const getMembersByHeadId = async (req, res) => {
     }
 
     const membersResult = await pool.query(
-      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, updated_at
+      `SELECT id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, is_lactating, is_pregnant, is_disabled, updated_at
        FROM citizens
        WHERE head_of_household_id = $1
        ORDER BY birth_date DESC`,
@@ -118,6 +121,9 @@ export const createCitizen = async (req, res) => {
       gender,
       birth_date,
       head_of_household_id,
+      is_lactating, 
+      is_pregnant, 
+      is_disabled
     } = req.body;
 
     if (
@@ -168,9 +174,9 @@ export const createCitizen = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO citizens
-       (id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id, updated_at`,
+       (id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id, is_lactating, is_pregnant, is_disabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id, is_lactating, is_pregnant, is_disabled, updated_at`,
       [
         id_number,
         first_name,
@@ -180,6 +186,9 @@ export const createCitizen = async (req, res) => {
         gender,
         birth_date,
         head_of_household_id || null,
+        is_lactating || false, 
+        is_pregnant || false, 
+        is_disabled || false
       ],
     );
 
@@ -209,6 +218,9 @@ export const updateCitizen = async (req, res) => {
       gender,
       birth_date,
       head_of_household_id,
+      is_lactating, 
+      is_pregnant, 
+      is_disabled
     } = req.body;
 
     if (!id || isNaN(Number(id))) {
@@ -260,9 +272,12 @@ export const updateCitizen = async (req, res) => {
            gender = COALESCE($6, gender),
            birth_date = COALESCE($7, birth_date),
            head_of_household_id = COALESCE($8, head_of_household_id),
+           is_lactating = COALESCE($9, is_lactating),
+           is_pregnant = COALESCE($10, is_pregnant),
+           is_disabled = COALESCE($11, is_disabled),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $9
-       RETURNING id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id, updated_at`,
+       WHERE id = $12
+       RETURNING id, id_number, first_name, last_name, phone_number, house_number, gender, birth_date, head_of_household_id, is_lactating, is_pregnant, is_disabled, updated_at`,
       [
         id_number,
         first_name,
@@ -272,6 +287,9 @@ export const updateCitizen = async (req, res) => {
         gender,
         birth_date,
         head_of_household_id,
+        is_lactating,
+        is_pregnant,
+        is_disabled,
         id,
       ],
     );
@@ -490,5 +508,87 @@ export const endDeliverySession = async (req, res) => {
     });
   } finally {
     client.release();
+  }
+};
+
+export const getStatistics = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        -- Población Total
+        (SELECT COUNT(*) FROM citizens) AS total_population,
+        
+        -- Cantidad de familias (jefes de familia)
+        (SELECT COUNT(*) FROM citizens WHERE head_of_household_id IS NULL) AS total_families,
+        
+        -- Niños (0-12 años) por género
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 0 AND 12 AND gender = 'M') AS children_male,
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 0 AND 12 AND gender = 'F') AS children_female,
+        
+        -- Adolescentes (13-17 años) por género
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 13 AND 17 AND gender = 'M') AS adolescents_male,
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 13 AND 17 AND gender = 'F') AS adolescents_female,
+        
+        -- Adultos (18-59 años) por género
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 18 AND 59 AND gender = 'M') AS adults_male,
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) BETWEEN 18 AND 59 AND gender = 'F') AS adults_female,
+        
+        -- Adultos mayores (60+ años) por género
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) >= 60 AND gender = 'M') AS seniors_male,
+        (SELECT COUNT(*) FROM citizens 
+         WHERE EXTRACT(YEAR FROM AGE(birth_date)) >= 60 AND gender = 'F') AS seniors_female,
+        
+        -- Embarazadas
+        (SELECT COUNT(*) FROM citizens WHERE is_pregnant = TRUE) AS pregnant_count,
+        
+        -- Lactantes
+        (SELECT COUNT(*) FROM citizens WHERE is_lactating = TRUE) AS lactating_count,
+        
+        -- Discapacitados
+        (SELECT COUNT(*) FROM citizens WHERE is_disabled = TRUE) AS disabled_count
+    `);
+
+    const stats = result.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      message: "Estadísticas obtenidas exitosamente",
+      data: {
+        poblacion_total: stats.total_population,
+        cantidad_familias: stats.total_families,
+        niños: {
+          masculino: stats.children_male,
+          femenino: stats.children_female,
+        },
+        adolescentes: {
+          masculino: stats.adolescents_male,
+          femenino: stats.adolescents_female,
+        },
+        adultos: {
+          masculino: stats.adults_male,
+          femenino: stats.adults_female,
+        },
+        adultos_mayores: {
+          masculino: stats.seniors_male,
+          femenino: stats.seniors_female,
+        },
+        embarazadas: stats.pregnant_count,
+        lactantes: stats.lactating_count,
+        discapacitados: stats.disabled_count
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ocurrió un error al obtener las estadísticas",
+    });
   }
 };
