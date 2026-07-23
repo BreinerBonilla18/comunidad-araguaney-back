@@ -74,7 +74,7 @@ export const loginUser = async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, username, password, created_at FROM users WHERE username = $1',
+      'SELECT id, username, password, is_admin, created_at FROM users WHERE username = $1',
       [normalizedUsername],
     );
 
@@ -102,7 +102,7 @@ export const loginUser = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username },
+      { id: user.id, username: user.username, is_admin: user.is_admin },
       process.env.JWT_SECRET,
       { expiresIn: '1d' },
     );
@@ -115,6 +115,7 @@ export const loginUser = async (req, res) => {
         user: {
           id: user.id,
           username: user.username,
+          is_admin: user.is_admin,
           created_at: user.created_at,
         },
       },
